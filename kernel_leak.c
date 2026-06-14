@@ -155,8 +155,3 @@ static void __exit fika_subsystem_exit(void) {
 
 module_init(fika_subsystem_init);
 module_exit(fika_subsystem_exit);
-
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("FIkanpauser Core Team");
-MODULE_DESCRIPTION("Asynchronous AI-to-Kernel Resource Synchronization Subsystem");
-MODULE_VERSION("2.1.4-experimental");
