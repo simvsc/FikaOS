@@ -79,33 +79,26 @@ static int fika_telemetry_show(struct seq_file *m, void *v) {
     struct task_struct *task;
     struct mm_struct *mm;
     unsigned long rss;
-    struct fika_stats stats = {0};
 
-    stats.last_update_ns = ktime_get_real_ns();
-
-    seq_printf(m, "--- FIKA KERNEL METRICS [%llu] ---\n", stats.last_update_ns);
-    seq_printf(m, "PID\tSTATE\tCPU\tRSS_KB\tCOMM\n");
-    seq_printf(m, "------------------------------------------\n");
+    seq_printf(m, "{\"timestamp\":%llu,\"tasks\":[", ktime_get_real_ns());
 
     rcu_read_lock();
+    bool first = true;
     for_each_process(task) {
-        stats.total_tasks++;
+        if (!task) continue;
         
-        /* Safely access Memory Management struct */
         mm = get_task_mm(task);
         rss = mm ? get_mm_rss(mm) << (PAGE_SHIFT - 10) : 0;
         if (mm) mmput(mm);
-
-        if (task->state > 0) stats.stopped_tasks++;
-
-        seq_printf(m, "%-8d%-8ld%-8d%-12lu%s\n", 
-                   task->pid, task->state, task_cpu(task), rss, task->comm);
+        
+        if (!first) seq_printf(m, ",");
+        seq_printf(m, "{\"pid\":%d,\"comm\":\"%s\",\"state\":%ld,\"cpu\":%d,\"mem\":%lu}",
+                   task->pid, task->comm, task->state, task_cpu(task), rss);
+        first = false;
     }
     rcu_read_unlock();
 
-    seq_printf(m, "------------------------------------------\n");
-    seq_printf(m, "SUMMARY: Total=%d Stopped=%d\n", stats.total_tasks, stats.stopped_tasks);
-
+    seq_printf(m, "]}\n");
     return 0;
 }
 
