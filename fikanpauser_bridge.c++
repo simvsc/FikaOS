@@ -106,7 +106,7 @@ public:
         FikaLogger::log("INIT", "Orchestrator Bridge operational.");
         
         while (true) {
-            std::string state = pull_telemetry("/proc/state.fika");
+            std::string state = pull_telemetry("/proc/fikanpauser/state.fika");
             
             if (state.length() < 10) {
                 FikaLogger::log("WARN", "Waiting for Kernel Telemetry Bridge...");
@@ -118,7 +118,7 @@ public:
             std::vector<int> pause_list = brain.fetch_scheduling_policy(state);
 
             if (!pause_list.empty()) {
-                FikaLogger::log("ACTION", "Synchronizing AI Verdict to /proc/pause.fika");
+                FikaLogger::log("ACTION", "Synchronizing AI Verdict to /proc/fikanpauser/pause.fika");
                 commit_to_kernel(pause_list);
             }
 
@@ -134,7 +134,7 @@ private:
     }
 
     void commit_to_kernel(const std::vector<int>& pids) {
-        std::ofstream pause_hook("/proc/pause.fika");
+        std::ofstream pause_hook("/proc/fikanpauser/pause.fika");
         if (!pause_hook.is_open()) {
             FikaLogger::log("ERROR", "Write access denied to Kernel Instruction Hook.");
             return;
