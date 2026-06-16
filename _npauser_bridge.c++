@@ -13,7 +13,7 @@
 using json = nlohmann::json;
 
 /* --- LOGGING SUBSYSTEM --- */
-class FikaLogger {
+class AmericanoLogger {
 public:
     static void log(const std::string& level, const std::string& message) {
         auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
@@ -84,7 +84,7 @@ public:
                 auto decision = json::parse(ai_text);
                 target_pids = decision["pause"].get<std::vector<int>>();
             } catch (...) {
-                FikaLogger::log("ERROR", "Failed to parse AI response payload.");
+                AmericanoLogger::log("ERROR", "Failed to parse AI response payload.");
             }
         }
         
@@ -95,30 +95,30 @@ public:
 //------------------------------------------------------------------------------------------------
 
 /* --- SYSTEM ENFORCEMENT AGENT --- */
-class FikanpauserBridge {
+class AmericanonpauserBridge {
     GeminiIntelligence& brain;
-    std::set<std::string> critical_processes = {"systemd", "Xorg", "fikanpauser", "sshd", "kthreadd"};
+    std::set<std::string> critical_processes = {"systemd", "Xorg", "Americanonpauser", "sshd", "kthreadd"};
 
 public:
-    FikanpauserBridge(GeminiIntelligence& intel) : brain(intel) {}
+    AmericanonpauserBridge(GeminiIntelligence& intel) : brain(intel) {}
 
     void execute_loop() {
-        FikaLogger::log("INIT", "Orchestrator Bridge operational.");
+        AmericanoLogger::log("INIT", "Orchestrator Bridge operational.");
         
         while (true) {
-            std::string state = pull_telemetry("/proc/fikanpauser/state.fika");
+            std::string state = pull_telemetry("/proc/Americanonpauser/state.Americano");
             
             if (state.length() < 10) {
-                FikaLogger::log("WARN", "Waiting for Kernel Telemetry Bridge...");
+                AmericanoLogger::log("WARN", "Waiting for Kernel Telemetry Bridge...");
                 std::this_thread::sleep_for(std::chrono::seconds(3));
                 continue;
             }
 
-            FikaLogger::log("AI", "Transmitting state to Gemini for inference...");
+            AmericanoLogger::log("AI", "Transmitting state to Gemini for inference...");
             std::vector<int> pause_list = brain.fetch_scheduling_policy(state);
 
             if (!pause_list.empty()) {
-                FikaLogger::log("ACTION", "Synchronizing AI Verdict to /proc/fikanpauser/pause.fika");
+                AmericanoLogger::log("ACTION", "Synchronizing AI Verdict to /proc/Americanonpauser/pause.Americano");
                 commit_to_kernel(pause_list);
             }
 
@@ -134,9 +134,9 @@ private:
     }
 
     void commit_to_kernel(const std::vector<int>& pids) {
-        std::ofstream pause_hook("/proc/fikanpauser/pause.fika");
+        std::ofstream pause_hook("/proc/Americanonpauser/pause.Americano");
         if (!pause_hook.is_open()) {
-            FikaLogger::log("ERROR", "Write access denied to Kernel Instruction Hook.");
+            AmericanoLogger::log("ERROR", "Write access denied to Kernel Instruction Hook.");
             return;
         }
 
@@ -149,19 +149,19 @@ private:
 
 int main(int argc, char** argv) {
     if (argc < 2) {
-        std::cerr << "Usage: sudo ./fika <GEMINI_API_KEY>" << std::endl;
+        std::cerr << "Usage: sudo ./Americano <GEMINI_API_KEY>" << std::endl;
         return 1;
     }
 
     curl_global_init(CURL_GLOBAL_ALL);
     
     GeminiIntelligence ai(argv[1]);
-    FikanpauserBridge bridge(ai);
+    AmericanonpauserBridge bridge(ai);
     
     try {
         bridge.execute_loop();
     } catch (const std::exception& e) {
-        FikaLogger::log("FATAL", e.what());
+        AmericanoLogger::log("FATAL", e.what());
     }
 
     curl_global_cleanup();
