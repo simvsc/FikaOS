@@ -32,6 +32,9 @@ class GeminiIntelligence {
         long http_code;
     };
 
+    /**
+    * Buffer all response fragments into a string. See HTTP (especially version 3) references
+    */
     static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* s) {
         size_t total_size = size * nmemb;
         s->append((char*)contents, total_size);
@@ -53,7 +56,7 @@ public:
         json payload = {
             {"contents", {{
                 {"parts", {{
-                    {"text", "You are an AI kernel scheduler. Analyze this JSON process list. "
+                    {"text", "You are the kernel scheduler. Analyze this JSON process list. "
                              "Identify processes that are resource-intensive but non-critical. "
                              "Return ONLY a JSON object with a key 'pause' containing an array of PIDs. "
                              "System State: " + kernel_state}
@@ -71,13 +74,14 @@ public:
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &raw_response);
         curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L); // Safety timeout
 
-        CURLcode res = curl_easy_perform(curl);
+        CURLcode res = curl_easy_perform(curl); //perform HTTP request
         
         if (res == CURLE_OK) {
             try {
                 auto parsed = json::parse(raw_response);
+                //complex standard gemini JSON response
                 std::string ai_text = parsed["candidates"][0]["content"]["parts"][0]["text"];
-                // Some AI models wrap JSON in triple backticks
+                // removes markdown tags
                 if (ai_text.find("```json") != std::string::npos) {
                     ai_text = ai_text.substr(7, ai_text.length() - 10);
                 }
@@ -106,20 +110,20 @@ public:
         AmericanoLogger::log("INIT", "Orchestrator Bridge operational.");
         
         while (true) {
-            std::string state = pull_telemetry("/proc/Americanonpauser/state.Americano");
+            std::string state = pull_telemetry("/proc/Americanonpauser/state.Americano"); // read from state proc file
             
-            if (state.length() < 10) {
+            if (state.length() < 10) { // the file is probably empty or not found
                 AmericanoLogger::log("WARN", "Waiting for Kernel Telemetry Bridge...");
-                std::this_thread::sleep_for(std::chrono::seconds(3));
+                std::this_thread::sleep_for(std::chrono::seconds(3)); // wait additional time
                 continue;
             }
 
             AmericanoLogger::log("AI", "Transmitting state to Gemini for inference...");
-            std::vector<int> pause_list = brain.fetch_scheduling_policy(state);
+            std::vector<int> pause_list = brain.fetch_scheduling_policy(state); // get the PIDs to pause
 
             if (!pause_list.empty()) {
                 AmericanoLogger::log("ACTION", "Synchronizing AI Verdict to /proc/Americanonpauser/pause.Americano");
-                commit_to_kernel(pause_list);
+                commit_to_kernel(pause_list); //write to pause proc file
             }
 
             std::this_thread::sleep_for(std::chrono::milliseconds(2500));
@@ -127,12 +131,18 @@ public:
     }
 
 private:
+    /*
+    * Read from a file and return a string
+    */
     std::string pull_telemetry(const std::string& path) {
         std::ifstream f(path);
         if (!f.is_open()) return "";
         return std::string((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
     }
 
+    /*
+    * Write to the pause file
+    */
     void commit_to_kernel(const std::vector<int>& pids) {
         std::ofstream pause_hook("/proc/Americanonpauser/pause.Americano");
         if (!pause_hook.is_open()) {
@@ -141,7 +151,7 @@ private:
         }
 
         for (size_t i = 0; i < pids.size(); ++i) {
-            pause_hook << pids[i] << (i == pids.size() - 1 ? "" : ",");
+            pause_hook << pids[i] << (i == pids.size() - 1 ? "" : ","); //writes the CSV file [pid1, pid2, ...]
         }
         pause_hook.close();
     }
