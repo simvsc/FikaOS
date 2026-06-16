@@ -40,46 +40,73 @@ static ssize_t americano_write_enforcement(struct file *file, const char __user 
     struct pid *pid_struct;
     struct task_struct *task;
 
+    // Allocate memory on KERNEL RAM
+    
+    //4 Kb page size
     if (count > PAGE_SIZE) return -EINVAL;
 
+    //GFP_KERNEL = soft realtime load
     input_buf = kmalloc(count + 1, GFP_KERNEL);
-    if (!input_buf) return -ENOMEM;
+    if (!input_buf) return -ENOMEM; //failed allocation
 
-    if (copy_from_user(input_buf, buffer, count)) {
-        kfree(input_buf);
+    //write in the RAM new page
+    if (copy_from_user(input_buf, buffer, count)) { //returns a non-zero if the function fails
+        kfree(input_buf); //free the memory
         return -EFAULT;
     }
-    input_buf[count] = '\0';
-
-    /* Parse CSV list of PIDs: "123,456,789" */
-    curr = input_buf;
-    while ((token = strsep(&curr, ",")) != NULL) {
+    input_buf[count] = '\0'; //null terminator to stop
+    
+    //iterate on the PIDs in the file to pause them
+    
+    curr = input_buf; // start position
+    while ((token = strsep(&curr, ",")) != NULL) { // for each PID, find it and pause it if present
         if (kstrtoint(token, 10, &pid_val) == 0) {
             rcu_read_lock();
-            pid_struct = find_get_pid(pid_val);
+            pid_struct = find_get_pid(pid_val); //get the real PID pointer 
             if (pid_struct) {
-                task = get_pid_task(pid_struct, PIDTYPE_PID);
+                task = get_pid_task(pid_struct, PIDTYPE_PID); // get the process pointer
                 if (task) {
-                    /* The AI Instruction: STOP the process */
-                    send_sig(SIGSTOP, task, 0);
-                    put_task_struct(task);
+                    send_sig(SIGSTOP, task, 0); // pause the process
+                    put_task_struct(task); //release the process (decrease usage counter)
                 }
-                put_pid(pid_struct);
+                put_pid(pid_struct); // release the PID
             }
             rcu_read_unlock();
         }
     }
 
-    kfree(input_buf);
-    return count;
+    kfree(input_buf); // free kernel RAM
+    return count; // number of bytes written on memory (count > 0 == success)
+}
+
+/*
+JSON example: 
+{
+  "timestamp": 1781615464000000000,
+  "tasks": [
+    {
+      "pid": 1,
+      "comm": "google",
+      "state": 1,
+      "cpu": 0,      //current assigned cores
+      "mem": 11520   // in Kb
+    },
+    {
+      "pid": 8421,
+      "comm": "bash",
+      "state": 0,
+      "cpu": 1,
+      "mem": 5120
+    }
+  ]
 }
 
 /* --- TELEMETRY ENGINE (STATE LOGIC) --- */
 static int americano_telemetry_show(struct seq_file *m, void *v) {
     struct task_struct *task;
-    struct mm_struct *mm;
     unsigned long rss;
-
+    
+    //write timestamp
     seq_printf(m, "{\"timestamp\":%llu,\"tasks\":[", ktime_get_real_ns());
 
     rcu_read_lock();
@@ -87,9 +114,15 @@ static int americano_telemetry_show(struct seq_file *m, void *v) {
     for_each_process(task) {
         if (!task) continue;
         
-        mm = get_task_mm(task);
-        rss = mm ? get_mm_rss(mm) << (PAGE_SHIFT - 10) : 0;
-        if (mm) mmput(mm);
+        // Memory calculation  
+        rss = 0; //initialize Resident Set Size
+        if (task->mm) {
+            task_lock(task); // critcic section
+            if (task->mm) { // mm descriptor has virtualized addresses
+                rss = get_mm_rss(task->mm) << (PAGE_SHIFT - 10);
+            }
+            task_unlock(task);
+        }
         
         if (!first) seq_printf(m, ",");
         seq_printf(m, "{\"pid\":%d,\"comm\":\"%s\",\"state\":%ld,\"cpu\":%d,\"mem\":%lu}",
