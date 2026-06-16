@@ -12,17 +12,17 @@
 #include <linux/version.h>
 
 /* --- PROTOTYPES & DEFINITIONS --- */
-#define DEVICE_NAME "fikanpauser"
+#define DEVICE_NAME "americanonpauser"
 #define MAX_PROC_ENTRIES 1024
-#define PROC_STATE_FILE "state.fika"
-#define PROC_PAUSE_FILE "pause.fika"
+#define PROC_STATE_FILE "state.americano"
+#define PROC_PAUSE_FILE "pause.americano"
 
-static struct proc_dir_entry *fika_dir;
+static struct proc_dir_entry *americano_dir;
 static struct proc_dir_entry *state_entry;
 static struct proc_dir_entry *pause_entry;
 
 /* Structure to keep track of system-wide metrics for the header */
-struct fika_stats {
+struct americano_stats {
     u64 last_update_ns;
     int total_tasks;
     int stopped_tasks;
@@ -31,8 +31,8 @@ struct fika_stats {
 //------------------------------------------------------------------------------------------------
 
 /* --- ENFORCEMENT ENGINE (PAUSE LOGIC) --- */
-/* This handles the writing to /proc/pause.fika */
-static ssize_t fika_write_enforcement(struct file *file, const char __user *buffer, 
+/* This handles the writing to /proc/pause.americano */
+static ssize_t americano_write_enforcement(struct file *file, const char __user *buffer, 
                                      size_t count, loff_t *data) {
     char *input_buf;
     char *token, *curr;
@@ -75,7 +75,7 @@ static ssize_t fika_write_enforcement(struct file *file, const char __user *buff
 }
 
 /* --- TELEMETRY ENGINE (STATE LOGIC) --- */
-static int fika_telemetry_show(struct seq_file *m, void *v) {
+static int americano_telemetry_show(struct seq_file *m, void *v) {
     struct task_struct *task;
     struct mm_struct *mm;
     unsigned long rss;
@@ -104,47 +104,47 @@ static int fika_telemetry_show(struct seq_file *m, void *v) {
 
 //------------------------------------------------------------------------------------------------
 
-static int fika_state_open(struct inode *inode, struct file *file) {
-    return single_open(file, fika_telemetry_show, NULL);
+static int americano_state_open(struct inode *inode, struct file *file) {
+    return single_open(file, americano_telemetry_show, NULL);
 }
 
 /* Mapping Kernel Operations to Virtual Files */
 static const struct proc_ops state_fops = {
-    .proc_open    = fika_state_open,
+    .proc_open    = americano_state_open,
     .proc_read    = seq_read,
     .proc_lseek   = seq_lseek,
     .proc_release = single_release,
 };
 
 static const struct proc_ops pause_fops = {
-    .proc_write   = fika_write_enforcement,
+    .proc_write   = americano_write_enforcement,
 };
 
 /* --- SUBSYSTEM LIFECYCLE --- */
-static int __init fika_subsystem_init(void) {
-    printk(KERN_INFO "[FIKA] Initializing High-Level Resource Orchestrator...\n");
+static int __init americano_subsystem_init(void) {
+    printk(KERN_INFO "[americano] Initializing High-Level Resource Orchestrator...\n");
 
-    fika_dir = proc_mkdir("fikanpauser", NULL);
-    if (!fika_dir) return -ENOMEM;
+    americano_dir = proc_mkdir("americanonpauser", NULL);
+    if (!americano_dir) return -ENOMEM;
 
-    state_entry = proc_create(PROC_STATE_FILE, 0444, fika_dir, &state_fops);
-    pause_entry = proc_create(PROC_PAUSE_FILE, 0222, fika_dir, &pause_fops);
+    state_entry = proc_create(PROC_STATE_FILE, 0444, americano_dir, &state_fops);
+    pause_entry = proc_create(PROC_PAUSE_FILE, 0222, americano_dir, &pause_fops);
 
     if (!state_entry || !pause_entry) {
-        remove_proc_entry("fikanpauser", NULL);
+        remove_proc_entry("americanonpauser", NULL);
         return -ENOMEM;
     }
 
-    printk(KERN_INFO "[FIKA] Operational at /proc/fikanpauser/\n");
+    printk(KERN_INFO "[americano] Operational at /proc/americanonpauser/\n");
     return 0;
 }
 
-static void __exit fika_subsystem_exit(void) {
-    remove_proc_entry(PROC_STATE_FILE, fika_dir);
-    remove_proc_entry(PROC_PAUSE_FILE, fika_dir);
-    remove_proc_entry("fikanpauser", NULL);
-    printk(KERN_INFO "[FIKA] Subsystem Deactivated\n");
+static void __exit americano_subsystem_exit(void) {
+    remove_proc_entry(PROC_STATE_FILE, americano_dir);
+    remove_proc_entry(PROC_PAUSE_FILE, americano_dir);
+    remove_proc_entry("americanonpauser", NULL);
+    printk(KERN_INFO "[americano] Subsystem Deactivated\n");
 }
 
-module_init(fika_subsystem_init);
-module_exit(fika_subsystem_exit);
+module_init(americano_subsystem_init);
+module_exit(americano_subsystem_exit);
