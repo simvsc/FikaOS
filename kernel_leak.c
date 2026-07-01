@@ -31,7 +31,7 @@ struct americano_stats {
 //------------------------------------------------------------------------------------------------
 
 /* --- ENFORCEMENT ENGINE (PAUSE LOGIC) --- */
-/* This handles the writing to /proc/pause.americano */
+/* This handles the reading froom /proc/pause.americano */
 static ssize_t americano_write_enforcement(struct file *file, const char __user *buffer, 
                                      size_t count, loff_t *data) {
     char *input_buf;
