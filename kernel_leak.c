@@ -112,7 +112,6 @@ static int americano_telemetry_show(struct seq_file *m, void *v) {
     rcu_read_lock();
     bool first = true;
     for_each_process(task) {
-        if (!task) continue;
         
         // Memory calculation  
         rss = 0; //initialize Resident Set Size
